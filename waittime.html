@@ -39,41 +39,89 @@
 
 <script>
 // scriptタグの中にjavascript(動き)を書く。htmlは置くだけ
+// model.jsonの係数を入れておく箱。最初は空。
+let model = null;
 
-//  asyncは時間のかかる処理を待てる関数にする印
-async function yosoku(){
-  
+// ページが開いた時に、model.jsonを読み込んでmodelに入れておく。
+// こうすればボタンを押すたびに読み込まなくて済む。
+fetch("model.json")
+  .then(response => response.json())
+  .then(data => { model = data; });
+// fetchでmodel.jsonを取ってきて、JSONに変換して、modelに入れる。
+
+async function yosoku() {
+
   const hiduke = document.getElementById("dateInput").value;
-  //  選ばれた日付を取り出す。getElementById("dateInput")で日付欄を探して、.valueで中身(選んだ日付)を取る。hidukeという箱に入れる。
+  // 選んだ日付を取り出す
 
-  document.getElementById("kekka").textContent = "天気を調べているから待とう";
-  //  結果表示欄(id=kekka)に文章を書き込む。textContentは文字を入れる為、インターネット通信で時間がかかるのでテキストを表示させる
+  document.getElementById("kekka").textContent = "天気を調べています...";
 
-// Openmeteoにアクセスするための住所(URL)を組み立てる。openmeteo側に指定されているのもの
-// latiudeは経度、longitudeは経度(舞浜の位置)。選んだ日付をstartとendに入れる。
-    const url = "https://api.open-meteo.com/v1/forecast"
+  // ① Open-Meteoから天気を取ってくる（前に作った部分）
+  const url = "https://api.open-meteo.com/v1/forecast"
     + "?latitude=35.6329&longitude=139.8804"
     + "&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum"
     + "&timezone=Asia/Tokyo"
     + "&start_date=" + hiduke
     + "&end_date=" + hiduke;
 
-  // fetchでそのURLにアクセスしてデータを取ってくる。awaitは取れるまで待つという事
   const response = await fetch(url);
-
-  //帰ってきたデータをjavascriptで扱える形(JSON)に変換する。
   const data = await response.json();
 
-  //  取れたデータから必要な数字を取り出す。[0]は一日分のうち最初の一件
-  const saikou = data.daily.temperature_2m_max[0];
-  const saitei = data.daily.temperature_2m_min[0];
-  const ame    = data.daily.precipitation_sum[0];
-  const tenki  = data.daily.weathercode[0];
+  const saikou = data.daily.temperature_2m_max[0];   // 最高気温
+  const saitei = data.daily.temperature_2m_min[0];   // 最低気温
+  const ame    = data.daily.precipitation_sum[0];    // 降水量
+  const tenkiCode = data.daily.weathercode[0];       // 天気コード
 
-  // 結果欄に取れた天気を表示する。
-  document.getElementById("kekka").textContent =
-    hiduke + " の天気: 最高" + saikou + "℃ / 最低" + saitei + "℃ / 降水量" + ame + "mm / 天気コード" + tenki;
+  // ② 天気コードを「曇か雨か」に変換する
+  // weathercodeが51以上なら雨、1〜3なら曇り、それ以外（0）は晴れ。
+  let cloudy = 0;
+  let rainy = 0;
+  if (tenkiCode >= 51) {
+    rainy = 1;          // 雨
+  } else if (tenkiCode >= 1) {
+    cloudy = 1;         // 曇り
+  }
+  // 晴れ（コード0）なら両方0のまま
+
+  // ③ 曜日を判定する
+  // new Date(hiduke)で日付を日付オブジェクトにする。getDay()で曜日番号を取る。
+  // 0=日曜, 6=土曜。
+  const youbi = new Date(hiduke).getDay();
+  let saturday = 0;
+  let sunday = 0;
+  if (youbi === 6) saturday = 1;   // 土曜
+  if (youbi === 0) sunday = 1;     // 日曜
+  // 祝日判定は今は省略（holidayは0のまま）
+  const holiday = 0;
+
+  // ④ 各時間帯ごとに予測を計算する
+  let kekkaText = hiduke + " の予測待ち時間\n";
+
+  // modelの中の時間帯を1つずつ取り出して計算する
+  for (const jikan in model) {
+    const c = model[jikan];   // その時間帯の係数セット
+
+    // さっき手計算でやった式を、そのままコードにする
+    const yosokuBun =
+        c.intercept
+      + c.saturday * saturday
+      + c.sunday * sunday
+      + c.holiday * holiday
+      + c.cloudy * cloudy
+      + c.rainy * rainy
+      + c.max_temp * saikou
+      + c.min_temp * saitei
+      + c.precipitation * ame;
+
+    // 計算結果を文章に足していく。Math.round()で小数を四捨五入。
+    kekkaText += jikan + " → 約" + Math.round(yosokuBun) + "分\n";
+  }
+
+  // ⑤ 結果を表示する
+  document.getElementById("kekka").textContent = kekkaText;
 }
+
+</script>
 </script>
 </body>
 <!-- 本体が終わり -->
