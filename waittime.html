@@ -29,22 +29,25 @@
   <!-- paragraphの略。見出しじゃなくて説明文として使う。 -->
 
 <input type="date" id="dateInput">
-<!== typeをdateにすると日付を選ぶカレンダーがでる。これは最初に備わっている機能。idは後でjavascriptから呼ぶための名札になる。変数ではなくシール -->
+<!-- typeをdateにすると日付を選ぶカレンダーがでる。これは最初に備わっている機能。idは後でjavascriptから呼ぶための名札になる。変数ではなくシール -->
 
 <button onclick="yosoku()">予測する</button>
-<!== ボタンで、onclickはクリックされたらyosokuという命令を実行するという意味。
+<!-- ボタンで、onclickはクリックされたらyosokuという命令を実行するという意味。 -->
 
 <p id="kekka">ここに結果が出ます</p>
-<!== 予測結果を表示する場所。idがkekkaなのでjavascriptでここに結果を書き込む。ボタンを押す前はここに結果が出ますと出て、ボタンが押されると予測結果になる ==>
+<!-- 予測結果を表示する場所。idがkekkaなのでjavascriptでここに結果を書き込む。ボタンを押す前はここに結果が出ますと出て、ボタンが押されると予測結果になる -->
 
 <script>
 // scriptタグの中にjavascript(動き)を書く。htmlは置くだけ
 
+function yosoku(){
+  
   const hiduke = document.getElementById("dateInput").value;
   //  選ばれた日付を取り出す。getElementById("dateInput")で日付欄を探して、.valueで中身(選んだ日付)を取る。hidukeという箱に入れる。
 
-  docment.getElementById("kekka").textContent = "選んだ日付は " + hiduke +" です";
+  document.getElementById("kekka").textContent = "選んだ日付は " + hiduke +" です";
   //  結果表示欄(id=kekka)に文章を書き込む。textContentは文字を入れる意味。選んだ日付をつなげて表示する。
+}
 </script>
   
 </body>
