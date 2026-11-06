@@ -41,7 +41,7 @@
 // scriptタグの中にjavascript(動き)を書く。htmlは置くだけ
 
 //  asyncは時間のかかる処理を待てる関数にする印
-asyncfunction yosoku(){
+async function yosoku(){
   
   const hiduke = document.getElementById("dateInput").value;
   //  選ばれた日付を取り出す。getElementById("dateInput")で日付欄を探して、.valueで中身(選んだ日付)を取る。hidukeという箱に入れる。
@@ -68,7 +68,7 @@ asyncfunction yosoku(){
   const saikou = data.daily.temperature_2m_max[0];
   const saitei = data.daily.temperature_2m_min[0];
   const ame    = data.daily.precipitation_sum[0];
-  const tneki  = data.daily.weathercode[0];
+  const tenki  = data.daily.weathercode[0];
 
   // 結果欄に取れた天気を表示する。
   document.getElementById("kekka").textContent =
