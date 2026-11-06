@@ -40,16 +40,41 @@
 <script>
 // scriptタグの中にjavascript(動き)を書く。htmlは置くだけ
 
-function yosoku(){
+//  asyncは時間のかかる処理を待てる関数にする印
+asyncfunction yosoku(){
   
   const hiduke = document.getElementById("dateInput").value;
   //  選ばれた日付を取り出す。getElementById("dateInput")で日付欄を探して、.valueで中身(選んだ日付)を取る。hidukeという箱に入れる。
 
-  document.getElementById("kekka").textContent = "選んだ日付は " + hiduke +" です";
-  //  結果表示欄(id=kekka)に文章を書き込む。textContentは文字を入れる意味。選んだ日付をつなげて表示する。
+  document.getElementById("kekka").textContent = "天気を調べているから待とう";
+  //  結果表示欄(id=kekka)に文章を書き込む。textContentは文字を入れる為、インターネット通信で時間がかかるのでテキストを表示させる
+
+// Openmeteoにアクセスするための住所(URL)を組み立てる。openmeteo側に指定されているのもの
+// latiudeは経度、longitudeは経度(舞浜の位置)。選んだ日付をstartとendに入れる。
+    const url = "https://api.open-meteo.com/v1/forecast"
+    + "?latitude=35.6329&longitude=139.8804"
+    + "&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum"
+    + "&timezone=Asia/Tokyo"
+    + "&start_date=" + hiduke
+    + "&end_date=" + hiduke;
+
+  // fetchでそのURLにアクセスしてデータを取ってくる。awaitは取れるまで待つという事
+  const response = await fetch(url);
+
+  //帰ってきたデータをjavascriptで扱える形(JSON)に変換する。
+  const data = await response.json();
+
+  //  取れたデータから必要な数字を取り出す。[0]は一日分のうち最初の一件
+  const saikou = data.daily.temperature_2m_max[0];
+  const saitei = data.daily.temperature_2m_min[0];
+  const ame    = data.daily.precipitation_sum[0];
+  const tneki  = data.daily.weathercode[0];
+
+  // 結果欄に取れた天気を表示する。
+  document.getElementById("kekka").textContent =
+    hiduke + " の天気: 最高" + saikou + "℃ / 最低" + saitei + "℃ / 降水量" + ame + "mm / 天気コード" + tenki;
 }
 </script>
-  
 </body>
 <!-- 本体が終わり -->
 
