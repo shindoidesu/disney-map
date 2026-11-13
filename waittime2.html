@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>美女と野獣 待ち時間予測</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #141430;
+      --card: #1e1e42;
+      --card-line: #2e2e5a;
+      --gold: #ffd24a;
+      --text: #eef0ff;
+      --sub: #8b92c4;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: 'Hiragino Sans', 'Meiryo', system-ui, sans-serif;
+      background: linear-gradient(170deg, #141430 0%, #0f2342 100%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: calc(16px + var(--safe-top)) 16px calc(32px + var(--safe-bottom));
+    }
+    .wrap { max-width: 540px; margin: 0 auto; }
+
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--sub); text-decoration: none;
+      font-size: 14px; font-weight: 600; padding: 8px 4px; margin-bottom: 8px;
+    }
+    .back-btn svg { width: 18px; height: 18px; }
+
+    .title { font-size: 24px; font-weight: 800; margin-bottom: 4px; }
+    .title .accent { color: var(--gold); }
+    .subtitle { font-size: 13px; color: var(--sub); margin-bottom: 22px; line-height: 1.6; }
+
+    .date-card {
+      background: var(--card); border: 1px solid var(--card-line);
+      border-radius: 18px; padding: 18px; margin-bottom: 18px;
+    }
+    .date-label { font-size: 12px; color: var(--sub); font-weight: 700; margin-bottom: 10px; }
+    .date-row { display: flex; gap: 10px; }
+    #dateInput {
+      flex: 1; background: #0e0e26; border: 1px solid var(--card-line);
+      border-radius: 12px; color: var(--text); font-size: 16px; padding: 14px;
+      font-family: inherit; color-scheme: dark;
+    }
+    #yosokuBtn {
+      background: linear-gradient(135deg, #ffd24a, #ffb01f); color: #1a1a2e;
+      border: none; border-radius: 12px; font-size: 16px; font-weight: 800;
+      padding: 0 24px; cursor: pointer; transition: transform 0.1s ease;
+    }
+    #yosokuBtn:active { transform: scale(0.96); }
+
+    #message {
+      text-align: center; color: var(--sub); font-size: 14px;
+      padding: 30px 0; line-height: 1.7; white-space: pre-line;
+    }
+
+    #result { display: none; }
+
+    .weather-row { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .weather-chip {
+      background: var(--card); border: 1px solid var(--card-line);
+      border-radius: 12px; padding: 10px 14px; font-size: 13px;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .weather-chip .big { font-size: 17px; }
+    .weather-chip .wlabel { color: var(--sub); font-size: 11px; }
+    .weather-chip .wval { font-weight: 700; }
+
+    .peak-row { display: flex; gap: 10px; margin-bottom: 18px; }
+    .peak-box { flex: 1; border-radius: 14px; padding: 14px; text-align: center; }
+    .peak-box.busy { background: rgba(255,90,90,0.14); border: 1px solid rgba(255,90,90,0.3); }
+    .peak-box.free { background: rgba(80,210,140,0.14); border: 1px solid rgba(80,210,140,0.3); }
+    .peak-label { font-size: 11px; color: var(--sub); margin-bottom: 4px; }
+    .peak-time { font-size: 20px; font-weight: 800; }
+    .peak-min { font-size: 12px; color: var(--sub); margin-top: 2px; }
+    .peak-box.busy .peak-time { color: #ff8585; }
+    .peak-box.free .peak-time { color: #52d28c; }
+
+    .chart-card {
+      background: var(--card); border: 1px solid var(--card-line);
+      border-radius: 18px; padding: 18px 14px 14px; margin-bottom: 18px;
+    }
+    .chart-title {
+      font-size: 13px; color: var(--sub); font-weight: 700;
+      margin-bottom: 4px; padding-left: 4px;
+    }
+    /* 「今」の注記（今日を選んだ時だけ出す） */
+    .chart-now-note {
+      font-size: 11px; color: #ff8585; font-weight: 700;
+      margin-bottom: 12px; padding-left: 4px;
+    }
+    .chart-box { position: relative; height: 230px; }
+    .chart-box.short { height: 150px; }  /* 天気グラフは少し低く */
+
+    .list-card {
+      background: var(--card); border: 1px solid var(--card-line);
+      border-radius: 18px; padding: 8px 4px;
+    }
+    .time-item { display: flex; align-items: center; padding: 11px 16px; border-bottom: 1px solid var(--card-line); }
+    .time-item:last-child { border-bottom: none; }
+    .time-label { width: 56px; font-size: 14px; font-weight: 700; }
+    .time-bar-wrap { flex: 1; height: 8px; background: #0e0e26; border-radius: 4px; margin: 0 12px; overflow: hidden; }
+    .time-bar { height: 100%; border-radius: 4px; }
+    .time-min { width: 52px; text-align: right; font-size: 14px; font-weight: 700; }
+
+    .note { margin-top: 18px; font-size: 11px; color: var(--sub); line-height: 1.6; text-align: center; }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <a href="hyousi2.html" class="back-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      戻る
+    </a>
+
+    <div class="title">美女と野獣 <span class="accent">待ち時間予測</span></div>
+    <div class="subtitle">日付を選ぶと、天気をもとに時間帯ごとの待ち時間を予測します</div>
+
+    <div class="date-card">
+      <div class="date-label">予測したい日</div>
+      <div class="date-row">
+        <input type="date" id="dateInput">
+        <button id="yosokuBtn" onclick="yosoku()">予測する</button>
+      </div>
+    </div>
+
+    <div id="message">日付を選んで「予測する」を押してください</div>
+
+    <div id="result">
+
+      <div class="weather-row" id="weather-row"></div>
+
+      <div class="peak-row">
+        <div class="peak-box busy">
+          <div class="peak-label">一番混む</div>
+          <div class="peak-time" id="busy-time">--</div>
+          <div class="peak-min" id="busy-min">-- 分</div>
+        </div>
+        <div class="peak-box free">
+          <div class="peak-label">一番空く</div>
+          <div class="peak-time" id="free-time">--</div>
+          <div class="peak-min" id="free-min">-- 分</div>
+        </div>
+      </div>
+
+      <!-- 待ち時間グラフ -->
+      <div class="chart-card">
+        <div class="chart-title">時間帯ごとの予測待ち時間（分）</div>
+        <div class="chart-now-note" id="now-note" style="display:none;"></div>
+        <div class="chart-box">
+          <canvas id="chart"></canvas>
+        </div>
+      </div>
+
+      <!-- 天気グラフ（気温＋降水量） -->
+      <div class="chart-card">
+        <div class="chart-title">時間ごとの気温（線）と降水量（棒）</div>
+        <div class="chart-box short">
+          <canvas id="weatherChart"></canvas>
+        </div>
+      </div>
+
+      <!-- 時間帯リスト -->
+      <div class="list-card" id="list-card"></div>
+
+      <div class="note">
+        ※ この予測は収集した待ち時間データと気象データをもとにした推定値です。<br>
+        実際の待ち時間とは異なる場合があります。
+      </div>
+    </div>
+  </div>
+
+
+<script>
+// =========================================================
+// 待ち時間の予測ロジックは元のまま。
+// 追加：1時間ごとの気温・降水量グラフ＋現在時刻の赤線。
+// =========================================================
+
+let model = null;
+let chartInstance = null;        // 待ち時間グラフ
+let weatherChartInstance = null; // 天気グラフ
+
+fetch("model.json")
+  .then(response => response.json())
+  .then(data => { model = data; });
+
+document.getElementById("dateInput").valueAsDate = new Date();
+
+
+async function yosoku() {
+
+  const hiduke = document.getElementById("dateInput").value;
+  if (!hiduke) { showMessage("日付を選んでください"); return; }
+
+  showMessage("天気を調べています…");
+
+  // ① 1日の天気（daily）と、1時間ごとの天気（hourly）の両方を一度に取る。
+  //    hourlyにtemperature_2m（気温）とprecipitation（降水量）を追加した。
+  const url = "https://api.open-meteo.com/v1/forecast"
+    + "?latitude=35.6329&longitude=139.8804"
+    + "&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum"
+    + "&hourly=temperature_2m,precipitation"
+    + "&timezone=Asia/Tokyo"
+    + "&start_date=" + hiduke
+    + "&end_date=" + hiduke;
+
+  let data;
+  try {
+    const response = await fetch(url);
+    data = await response.json();
+  } catch (e) {
+    showMessage("天気の取得に失敗しました。通信環境を確認してください");
+    return;
+  }
+
+  if (!data.daily || data.daily.temperature_2m_max[0] == null) {
+    showMessage("この日の天気データは取得できません。\n16日以内の日付を選んでください");
+    return;
+  }
+
+  const saikou = data.daily.temperature_2m_max[0];
+  const saitei = data.daily.temperature_2m_min[0];
+  const ame    = data.daily.precipitation_sum[0];
+  const tenkiCode = data.daily.weathercode[0];
+
+  // 天気コードを曇/雨に変換（予測計算用。元のまま）
+  let cloudy = 0, rainy = 0;
+  if (tenkiCode >= 51) { rainy = 1; }
+  else if (tenkiCode >= 1) { cloudy = 1; }
+
+  // 曜日判定（元のまま）
+  const youbi = new Date(hiduke).getDay();
+  let saturday = 0, sunday = 0;
+  if (youbi === 6) saturday = 1;
+  if (youbi === 0) sunday = 1;
+  const holiday = 0;
+
+  // ② 各時間帯の待ち時間を計算（計算式は元のまま）
+  const times = [];
+  const mins = [];
+  for (const jikan in model) {
+    const c = model[jikan];
+    let yosokuBun =
+        c.intercept
+      + c.saturday * saturday + c.sunday * sunday + c.holiday * holiday
+      + c.cloudy * cloudy + c.rainy * rainy
+      + c.max_temp * saikou + c.min_temp * saitei + c.precipitation * ame;
+    yosokuBun = Math.max(0, Math.round(yosokuBun));
+    times.push(jikan);
+    mins.push(yosokuBun);
+  }
+
+  // ③ 1時間ごとの気温・降水量を、営業時間（9時〜20時）だけ取り出す
+  const hourlyData = extractHourly(data.hourly);
+
+  // ④ 画面に描く
+  drawResult(hiduke, times, mins, { saikou, saitei, ame, cloudy, rainy }, hourlyData);
+}
+
+
+// ==================================================
+// 1時間ごとの天気データから、営業時間分だけ取り出す
+// ==================================================
+function extractHourly(hourly) {
+  // hourly.time は ["2026-07-10T00:00", "2026-07-10T01:00", ...] の形
+  const labels = [];       // 時刻（"9時"など）
+  const temps = [];        // 気温
+  const rains = [];        // 降水量
+
+  for (let i = 0; i < hourly.time.length; i++) {
+    // 時刻の文字列から「時」の数字を取り出す（例："...T09:00" → 9）
+    const hour = parseInt(hourly.time[i].substring(11, 13));
+
+    // 営業時間の9時〜20時だけ使う
+    if (hour >= 9 && hour <= 20) {
+      labels.push(hour + "時");
+      temps.push(hourly.temperature_2m[i]);
+      rains.push(hourly.precipitation[i]);
+    }
+  }
+  return { labels, temps, rains };
+}
+
+
+function showMessage(text) {
+  const msg = document.getElementById("message");
+  msg.textContent = text;
+  msg.style.display = "block";
+  document.getElementById("result").style.display = "none";
+}
+
+
+function drawResult(hiduke, times, mins, weather, hourlyData) {
+
+  document.getElementById("message").style.display = "none";
+  document.getElementById("result").style.display = "block";
+
+  // 天気サマリー
+  let wEmoji = "☀️", wName = "晴れ";
+  if (weather.rainy) { wEmoji = "🌧️"; wName = "雨"; }
+  else if (weather.cloudy) { wEmoji = "☁️"; wName = "くもり"; }
+
+  document.getElementById("weather-row").innerHTML = `
+    <div class="weather-chip"><span class="big">${wEmoji}</span>
+      <div><div class="wlabel">天気</div><div class="wval">${wName}</div></div></div>
+    <div class="weather-chip">
+      <div><div class="wlabel">最高 / 最低</div><div class="wval">${weather.saikou}° / ${weather.saitei}°</div></div></div>
+    <div class="weather-chip">
+      <div><div class="wlabel">降水量</div><div class="wval">${weather.ame} mm</div></div></div>
+  `;
+
+  // ピーク
+  let maxIdx = 0, minIdx = 0;
+  for (let i = 1; i < mins.length; i++) {
+    if (mins[i] > mins[maxIdx]) maxIdx = i;
+    if (mins[i] < mins[minIdx]) minIdx = i;
+  }
+  document.getElementById("busy-time").textContent = times[maxIdx];
+  document.getElementById("busy-min").textContent = mins[maxIdx] + " 分";
+  document.getElementById("free-time").textContent = times[minIdx];
+  document.getElementById("free-min").textContent = mins[minIdx] + " 分";
+
+  // ⑤ 現在時刻の線を出すか判定する
+  const nowLineIndex = getNowLineIndex(hiduke, times);
+
+  // グラフを描く
+  drawChart(times, mins, nowLineIndex);
+  drawWeatherChart(hourlyData);
+  drawList(times, mins);
+}
+
+
+// ==================================================
+// 現在時刻の赤線を、グラフのどの位置に出すか決める
+// ==================================================
+// ・選んだ日が「今日」でなければ線を出さない（-1を返す）
+// ・今日なら、現在時刻が時間帯リストの何番目に当たるか返す
+// ・営業時間外なら「営業時間外」の注記を出して線は出さない
+// ==================================================
+function getNowLineIndex(hiduke, times) {
+  const noteEl = document.getElementById("now-note");
+  noteEl.style.display = "none";
+
+  // 今日の日付（YYYY-MM-DD）を作る
+  const now = new Date();
+  const todayStr = now.getFullYear() + "-"
+    + String(now.getMonth() + 1).padStart(2, "0") + "-"
+    + String(now.getDate()).padStart(2, "0");
+
+  // 選んだ日付も同じ形に整える（ブラウザによって / 区切りの場合があるため）
+  const selected = hiduke.replace(/\//g, "-");
+
+  // 今日じゃなければ線は出さない
+  if (selected !== todayStr) {
+    return -1;
+  }
+
+  // 今が何時何分かを「分」に直す（例：14:30 → 870分）
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  // 営業時間（最初の時間帯〜最後の時間帯）を分に直す
+  const firstMin = timeToMinutes(times[0]);                 // 例：9:15 → 555
+  const lastMin  = timeToMinutes(times[times.length - 1]);  // 例：19:45 → 1185
+
+  // 営業時間外なら注記を出して線なし
+  if (nowMinutes < firstMin || nowMinutes > lastMin) {
+    noteEl.textContent = "🔴 現在は営業時間外です";
+    noteEl.style.display = "block";
+    return -1;
+  }
+
+  // 現在時刻が、どの時間帯に一番近いか探す
+  let nearest = 0;
+  let minDiff = Infinity;
+  for (let i = 0; i < times.length; i++) {
+    const diff = Math.abs(timeToMinutes(times[i]) - nowMinutes);
+    if (diff < minDiff) { minDiff = diff; nearest = i; }
+  }
+
+  noteEl.textContent = "🔴 赤い線が現在のおおよその時刻です";
+  noteEl.style.display = "block";
+  return nearest;
+}
+
+// "9:15" のような文字を「分」に変換する（9*60+15 = 555）
+function timeToMinutes(t) {
+  const parts = t.split(":");
+  return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+}
+
+
+// ==================================================
+// 待ち時間の折れ線グラフ（現在時刻の赤線つき）
+// ==================================================
+function drawChart(times, mins, nowLineIndex) {
+  const ctx = document.getElementById("chart");
+  if (chartInstance) chartInstance.destroy();
+
+  // 現在時刻に縦の赤線を引くための設定（Chart.jsのプラグイン機能）
+  const nowLinePlugin = {
+    id: "nowLine",
+    afterDraw(chart) {
+      if (nowLineIndex < 0) return;  // 線を出さない場合は何もしない
+      const x = chart.scales.x.getPixelForValue(nowLineIndex);
+      const top = chart.chartArea.top;
+      const bottom = chart.chartArea.bottom;
+      const c = chart.ctx;
+      c.save();
+      c.beginPath();
+      c.moveTo(x, top);
+      c.lineTo(x, bottom);
+      c.lineWidth = 2;
+      c.strokeStyle = "#ff5a5a";
+      c.setLineDash([4, 3]);  // 点線にする
+      c.stroke();
+      c.restore();
+    }
+  };
+
+  chartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: times,
+      datasets: [{
+        data: mins,
+        borderColor: "#ffd24a",
+        backgroundColor: "rgba(255,210,74,0.12)",
+        fill: true, tension: 0.4, borderWidth: 2.5,
+        pointBackgroundColor: "#ffd24a", pointRadius: 3, pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: "rgba(255,255,255,0.06)" }, ticks: { color: "#8b92c4", font: { size: 11 } } },
+        x: { grid: { display: false }, ticks: { color: "#8b92c4", font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } }
+      }
+    },
+    plugins: [nowLinePlugin]
+  });
+}
+
+
+// ==================================================
+// 天気グラフ（気温＝折れ線、降水量＝棒）
+// ==================================================
+// 1つのグラフに2種類を重ねる。気温は左の軸、降水量は右の軸で測る。
+function drawWeatherChart(hourlyData) {
+  const ctx = document.getElementById("weatherChart");
+  if (weatherChartInstance) weatherChartInstance.destroy();
+
+  weatherChartInstance = new Chart(ctx, {
+    data: {
+      labels: hourlyData.labels,
+      datasets: [
+        {
+          // 降水量（棒グラフ）
+          type: "bar",
+          label: "降水量(mm)",
+          data: hourlyData.rains,
+          backgroundColor: "rgba(80,170,255,0.55)",
+          borderRadius: 3,
+          yAxisID: "yRain",   // 右の軸を使う
+          order: 2            // 棒を後ろに描く
+        },
+        {
+          // 気温（折れ線）
+          type: "line",
+          label: "気温(℃)",
+          data: hourlyData.temps,
+          borderColor: "#ff9f6b",
+          backgroundColor: "rgba(255,159,107,0.1)",
+          tension: 0.4,
+          borderWidth: 2,
+          pointRadius: 2,
+          yAxisID: "yTemp",   // 左の軸を使う
+          order: 1            // 線を前に描く
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, labels: { color: "#8b92c4", font: { size: 11 }, boxWidth: 12 } }
+      },
+      scales: {
+        // 左の軸：気温
+        yTemp: {
+          position: "left",
+          grid: { color: "rgba(255,255,255,0.06)" },
+          ticks: { color: "#ff9f6b", font: { size: 10 } }
+        },
+        // 右の軸：降水量
+        yRain: {
+          position: "right",
+          beginAtZero: true,
+          grid: { display: false },
+          ticks: { color: "#50aaff", font: { size: 10 } }
+        },
+        x: { grid: { display: false }, ticks: { color: "#8b92c4", font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 7 } }
+      }
+    }
+  });
+}
+
+
+// ==================================================
+// 時間帯リスト（色付きバー）
+// ==================================================
+function drawList(times, mins) {
+  const listCard = document.getElementById("list-card");
+  const maxMin = Math.max(...mins);
+  let html = "";
+  for (let i = 0; i < times.length; i++) {
+    const m = mins[i];
+    const ratio = maxMin > 0 ? (m / maxMin) * 100 : 0;
+    const color = minColor(m);
+    html += `
+      <div class="time-item">
+        <div class="time-label">${times[i]}</div>
+        <div class="time-bar-wrap"><div class="time-bar" style="width:${ratio}%; background:${color};"></div></div>
+        <div class="time-min" style="color:${color};">${m}分</div>
+      </div>`;
+  }
+  listCard.innerHTML = html;
+}
+
+function minColor(m) {
+  if (m < 40)  return "#52d28c";
+  if (m < 80)  return "#ffd24a";
+  if (m < 120) return "#ff9f45";
+  return "#ff6b6b";
+}
+</script>
+</body>
+</html>
