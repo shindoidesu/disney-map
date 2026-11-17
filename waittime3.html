@@ -13,7 +13,6 @@
       --card: #1e1e42;
       --card-line: #2e2e5a;
       --gold: #ffd24a;
-      --cyan: #49c3ff;
       --text: #eef0ff;
       --sub: #8b92c4;
       --safe-top: env(safe-area-inset-top, 0px);
@@ -58,20 +57,19 @@
     }
     #yosokuBtn:active { transform: scale(0.96); }
 
-    /* アトラクション選択チップ */
-    .pick-row { display: flex; gap: 8px; margin-bottom: 18px; }
+    /* アトラクション選択チップ（JSで中身を作る） */
+    .pick-row { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
     .pick-chip {
-      flex: 1; padding: 12px 8px; border-radius: 12px;
+      flex: 1 1 auto; min-width: 80px;
+      padding: 12px 10px; border-radius: 12px;
       background: var(--card); border: 1px solid var(--card-line);
       color: var(--sub); font-size: 13px; font-weight: 700;
       cursor: pointer; text-align: center;
-      transition: all 0.15s ease;
+      transition: transform 0.1s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     }
     .pick-chip:active { transform: scale(0.97); }
+    /* 選択中のチップは、そのアトラクションの色で塗る（色はJSで付ける） */
     .pick-chip.on { color: #1a1a2e; }
-    .pick-chip[data-pick="beauty"].on { background: var(--gold); border-color: var(--gold); }
-    .pick-chip[data-pick="splash"].on { background: var(--cyan); border-color: var(--cyan); }
-    .pick-chip[data-pick="compare"].on { background: #c0a3ff; border-color: #c0a3ff; }
 
     #message {
       text-align: center; color: var(--sub); font-size: 14px;
@@ -90,15 +88,24 @@
     .weather-chip .wlabel { color: var(--sub); font-size: 11px; }
     .weather-chip .wval { font-weight: 700; }
 
+    /* 単体モードの 一番混む/空く */
     .peak-row { display: flex; gap: 10px; margin-bottom: 18px; }
-    .peak-box { flex: 1; border-radius: 14px; padding: 14px; text-align: center; }
-    .peak-box.a { background: rgba(255,210,74,0.12); border: 1px solid rgba(255,210,74,0.3); }
-    .peak-box.b { background: rgba(73,195,255,0.12); border: 1px solid rgba(73,195,255,0.3); }
+    .peak-box { flex: 1; border-radius: 14px; padding: 14px; text-align: center;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--card-line); }
     .peak-label { font-size: 11px; color: var(--sub); margin-bottom: 4px; }
     .peak-time { font-size: 20px; font-weight: 800; }
     .peak-min { font-size: 12px; color: var(--sub); margin-top: 2px; }
-    .peak-box.a .peak-time { color: var(--gold); }
-    .peak-box.b .peak-time { color: var(--cyan); }
+
+    /* 比較モードの 平均まとめ（アトラクションごとの小さなチップ・7個でも折り返す） */
+    .cmp-row { display: none; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    .cmp-chip {
+      background: var(--card); border: 1px solid var(--card-line);
+      border-radius: 12px; padding: 9px 13px; font-size: 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .cmp-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .cmp-name { color: var(--text); font-weight: 700; }
+    .cmp-val { color: var(--sub); }
 
     .chart-card {
       background: var(--card); border: 1px solid var(--card-line);
@@ -139,7 +146,7 @@
     </a>
 
     <div class="title">アトラクション <span class="accent">待ち時間予測</span></div>
-    <div class="subtitle">日付を選ぶと、天気をもとに時間帯ごとの待ち時間を予測します</div>
+    <div class="subtitle">日付を選んで予測したあとは、下のボタンで瞬時に切り替えられます</div>
 
     <div class="date-card">
       <div class="date-label">予測したい日</div>
@@ -149,31 +156,31 @@
       </div>
     </div>
 
-    <!-- アトラクション選択 -->
-    <div class="pick-row" id="pick-row">
-      <div class="pick-chip on" data-pick="beauty">美女と野獣</div>
-      <div class="pick-chip" data-pick="splash">スプラッシュ</div>
-      <div class="pick-chip" data-pick="compare">⚖️ 比較</div>
-    </div>
+    <!-- アトラクション選択（JSで中身を作る） -->
+    <div class="pick-row" id="pick-row"></div>
 
-    <div id="message">日付とアトラクションを選んで「予測する」を押してください</div>
+    <div id="message">日付を選んで「予測する」を押してください</div>
 
     <div id="result">
 
       <div class="weather-row" id="weather-row"></div>
 
+      <!-- 単体モード：一番混む/空く -->
       <div class="peak-row" id="peak-row">
-        <div class="peak-box a">
+        <div class="peak-box">
           <div class="peak-label" id="peakA-label">一番混む</div>
           <div class="peak-time" id="peakA-time">--</div>
           <div class="peak-min" id="peakA-min">-- 分</div>
         </div>
-        <div class="peak-box b">
+        <div class="peak-box">
           <div class="peak-label" id="peakB-label">一番空く</div>
           <div class="peak-time" id="peakB-time">--</div>
           <div class="peak-min" id="peakB-min">-- 分</div>
         </div>
       </div>
+
+      <!-- 比較モード：アトラクションごとの平均 -->
+      <div class="cmp-row" id="cmp-row"></div>
 
       <!-- 統合グラフ -->
       <div class="chart-card">
@@ -198,16 +205,21 @@
 
 <script>
 // =========================================================
-// アトラクションの設定
-// model.json  = 美女と野獣の係数
-// model2.json = スプラッシュマウンテンの係数
+// ★ アトラクションの設定 ★
+// 追加するときは、ここに1行足して model?.json を用意するだけ。
+//   key  : プログラム内での名前（なんでもよい・他と被らせない）
+//   name : 画面に出す名前
+//   file : 係数ファイル名
+//   color: グラフと選択チップの色
+// 例）{ key:"haunted", name:"ホーンテッド", file:"model3.json", color:"#b98cff" },
 // =========================================================
-const ATTRACTIONS = {
-  beauty: { name: "美女と野獣",        file: "model.json",  color: "#ffd24a" },
-  splash: { name: "スプラッシュ・マウンテン", file: "model2.json", color: "#49c3ff" }
-};
+const ATTRACTIONS = [
+  { key: "beauty", name: "美女と野獣",         file: "model.json",  color: "#ffd24a" },
+  { key: "splash", name: "スプラッシュ",        file: "model2.json", color: "#49c3ff" },
+  // ↑ ここに追加していく
+];
 
-// 分析した時間帯（この順でグラフの横軸が並ぶ）
+// 分析した時間帯（この順で横軸が並ぶ）
 const TIME_SLOTS = [
   "9:15","9:45","10:15","10:45","11:15","11:45",
   "12:15","12:45","13:15","13:45","14:15","14:45",
@@ -215,75 +227,113 @@ const TIME_SLOTS = [
   "18:15","18:45","19:15","19:45"
 ];
 
-// 読み込んだ係数を入れる箱
-const models = { beauty: null, splash: null };
+// 読み込んだ係数（key → 係数オブジェクト）
+const models = {};
 
-// 今どのモードか（beauty / splash / compare）
-let currentPick = "beauty";
+// 今の選択（アトラクションのkey、または "__compare__"）
+let currentPick = ATTRACTIONS[0].key;
+
+// 取得した天気を記憶しておく箱（これがあれば通信せず即計算できる）
+let cache = null;   // { date, weather, day, temps, rains }
 
 let chartInstance = null;
 
 
 // ==================================================
 // 係数ファイルを「どんな形でも」同じ形に整える
-// ・{models:{...}} で包まれていれば中を取り出す
-// ・直接 時間帯 が並んでいればそのまま使う
-// ・interceptが無い時間帯（データなし）は除く
 // ==================================================
 function normalizeModel(data) {
   const src = (data && data.models) ? data.models : data;
   const out = {};
   for (const slot in src) {
     const c = src[slot];
-    if (c && typeof c.intercept === "number") {
-      out[slot] = c;
-    }
+    if (c && typeof c.intercept === "number") out[slot] = c;
   }
   return out;
 }
 
-// ページを開いたら両方の係数を読み込む
-fetch("model.json")
-  .then(r => r.json())
-  .then(d => { models.beauty = normalizeModel(d); })
-  .catch(() => { models.beauty = null; });
-
-fetch("model2.json")
-  .then(r => r.json())
-  .then(d => { models.splash = normalizeModel(d); })
-  .catch(() => { models.splash = null; });
-
-document.getElementById("dateInput").valueAsDate = new Date();
-
-
-// ==================================================
-// アトラクション選択チップ
-// ==================================================
-document.querySelectorAll(".pick-chip").forEach(chip => {
-  chip.onclick = () => {
-    document.querySelectorAll(".pick-chip").forEach(c => c.classList.remove("on"));
-    chip.classList.add("on");
-    currentPick = chip.dataset.pick;
-  };
+// 全アトラクションの係数を読み込む
+ATTRACTIONS.forEach(a => {
+  fetch(a.file)
+    .then(r => r.json())
+    .then(d => { models[a.key] = normalizeModel(d); })
+    .catch(() => { models[a.key] = null; });
 });
 
+// 日付の初期値を今日に
+document.getElementById("dateInput").valueAsDate = new Date();
+
+// 日付を変えたら天気の記憶を捨てる（次は取り直す）
+document.getElementById("dateInput").addEventListener("change", () => { cache = null; });
+
 
 // ==================================================
-// 予測ボタン
+// 選択チップを作る（アトラクション分 ＋ 比較）
+// ==================================================
+const pickRow = document.getElementById("pick-row");
+ATTRACTIONS.forEach(a => {
+  const chip = document.createElement("div");
+  chip.className = "pick-chip";
+  chip.dataset.pick = a.key;
+  chip.textContent = a.name;
+  pickRow.appendChild(chip);
+});
+// 比較チップ（2個以上あるときだけ出す）
+if (ATTRACTIONS.length >= 2) {
+  const cmp = document.createElement("div");
+  cmp.className = "pick-chip";
+  cmp.dataset.pick = "__compare__";
+  cmp.textContent = "⚖️ 比較";
+  pickRow.appendChild(cmp);
+}
+
+// チップの見た目を更新（選択中のものだけ色を塗る）
+function refreshChips() {
+  document.querySelectorAll(".pick-chip").forEach(chip => {
+    const key = chip.dataset.pick;
+    const on = (key === currentPick);
+    chip.classList.toggle("on", on);
+    if (on) {
+      const col = (key === "__compare__") ? "#c0a3ff" : attrByKey(key).color;
+      chip.style.background = col;
+      chip.style.borderColor = col;
+    } else {
+      chip.style.background = "";
+      chip.style.borderColor = "";
+    }
+  });
+}
+
+// チップをタップしたとき
+document.querySelectorAll(".pick-chip").forEach(chip => {
+  chip.onclick = () => {
+    currentPick = chip.dataset.pick;
+    refreshChips();
+    // 天気を記憶済みで、しかも同じ日付なら → 通信せず即描画
+    if (cache && cache.date === document.getElementById("dateInput").value) {
+      render();
+    } else {
+      // まだ天気が無い（または日付を変えた）→ 取得してから描画
+      yosoku();
+    }
+  };
+});
+refreshChips();
+
+
+function attrByKey(key) { return ATTRACTIONS.find(a => a.key === key); }
+
+
+// ==================================================
+// 予測ボタン：天気を取得して記憶し、描画する
 // ==================================================
 async function yosoku() {
 
   const hiduke = document.getElementById("dateInput").value;
   if (!hiduke) { showMessage("日付を選んでください"); return; }
 
-  // 必要な係数が読み込めているか確認
-  if (currentPick === "beauty" && !models.beauty) { showMessage("美女と野獣の係数(model.json)が読み込めませんでした"); return; }
-  if (currentPick === "splash" && !models.splash) { showMessage("スプラッシュの係数(model2.json)が読み込めませんでした"); return; }
-  if (currentPick === "compare" && (!models.beauty || !models.splash)) { showMessage("比較には両方の係数が必要です。\nmodel.json と model2.json を確認してください"); return; }
-
   showMessage("天気を調べています…");
 
-  // 天気（1日の値 + 1時間ごとの値）を取得
   const url = "https://api.open-meteo.com/v1/forecast"
     + "?latitude=35.6329&longitude=139.8804"
     + "&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_sum"
@@ -316,42 +366,135 @@ async function yosoku() {
   if (weather.code >= 51) weather.rainy = 1;
   else if (weather.code >= 1) weather.cloudy = 1;
 
-  // 曜日
   const youbi = new Date(hiduke).getDay();
   const day = { sat: youbi === 6 ? 1 : 0, sun: youbi === 0 ? 1 : 0, hol: 0 };
 
   // 1時間ごとの気温・降水量を各時間帯に合わせる
-  const tempsAligned = [];
-  const rainsAligned = [];
+  const temps = [], rains = [];
   for (const t of TIME_SLOTS) {
     const parts = t.split(":");
     const targetHour = parseInt(parts[0]) + parseInt(parts[1]) / 60;
-    let nearestTemp = null, nearestRain = null, minDiff = Infinity;
+    let nt = null, nr = null, md = Infinity;
     for (let i = 0; i < data.hourly.time.length; i++) {
       const h = parseInt(data.hourly.time[i].substring(11, 13));
       const diff = Math.abs(h - targetHour);
-      if (diff < minDiff) {
-        minDiff = diff;
-        nearestTemp = data.hourly.temperature_2m[i];
-        nearestRain = data.hourly.precipitation[i];
-      }
+      if (diff < md) { md = diff; nt = data.hourly.temperature_2m[i]; nr = data.hourly.precipitation[i]; }
     }
-    tempsAligned.push(nearestTemp);
-    rainsAligned.push(nearestRain);
+    temps.push(nt); rains.push(nr);
   }
 
-  drawResult(hiduke, weather, day, tempsAligned, rainsAligned);
+  // 天気を記憶（これ以降の切り替えは通信なしで即描画できる）
+  cache = { date: hiduke, weather, day, temps, rains };
+  render();
 }
 
 
 // ==================================================
-// 1つのアトラクションの各時間帯の待ち時間を計算
-// （係数 × 条件 を全部足す。元の計算式と同じ）
+// 記憶した天気をもとに描画する（通信なし・一瞬）
+// アトラクションを切り替えるたびに、ここだけが走る。
 // ==================================================
-function predictAttraction(modelObj, weather, day) {
+function render() {
+  if (!cache) { showMessage("先に「予測する」を押してください"); return; }
+
+  document.getElementById("message").style.display = "none";
+  document.getElementById("result").style.display = "block";
+
+  const { weather, day, temps, rains, date } = cache;
+
+  // 天気サマリー
+  let wEmoji = "☀️", wName = "晴れ";
+  if (weather.rainy) { wEmoji = "🌧️"; wName = "雨"; }
+  else if (weather.cloudy) { wEmoji = "☁️"; wName = "くもり"; }
+  document.getElementById("weather-row").innerHTML = `
+    <div class="weather-chip"><span class="big">${wEmoji}</span>
+      <div><div class="wlabel">天気</div><div class="wval">${wName}</div></div></div>
+    <div class="weather-chip">
+      <div><div class="wlabel">最高 / 最低</div><div class="wval">${weather.saikou}° / ${weather.saitei}°</div></div></div>
+    <div class="weather-chip">
+      <div><div class="wlabel">降水量</div><div class="wval">${weather.ame} mm</div></div></div>
+  `;
+
+  const nowLineIndex = getNowLineIndex(date);
+
+  if (currentPick === "__compare__") {
+    renderCompare(weather, day, temps, rains, nowLineIndex);
+  } else {
+    renderSingle(currentPick, weather, day, temps, rains, nowLineIndex);
+  }
+}
+
+
+// ---- 単体モード ----
+function renderSingle(key, weather, day, temps, rains, nowLineIndex) {
+  const info = attrByKey(key);
+  const modelObj = models[key];
+
+  // 表示の出し分け
+  document.getElementById("peak-row").style.display = "flex";
+  document.getElementById("cmp-row").style.display = "none";
+  document.getElementById("list-card").style.display = "block";
+
+  if (!modelObj) {
+    document.getElementById("chart-title").textContent = info.name;
+    showMessage(info.name + "の係数(" + info.file + ")が読み込めませんでした");
+    return;
+  }
+
+  const mins = predict(modelObj, weather, day);
+
+  let maxIdx = firstValid(mins), minIdx = firstValid(mins);
+  for (let i = 0; i < mins.length; i++) {
+    if (mins[i] == null) continue;
+    if (mins[i] > mins[maxIdx]) maxIdx = i;
+    if (mins[i] < mins[minIdx]) minIdx = i;
+  }
+  document.getElementById("peakA-label").textContent = "一番混む";
+  document.getElementById("peakA-time").textContent = TIME_SLOTS[maxIdx];
+  document.getElementById("peakA-min").textContent = mins[maxIdx] + " 分";
+  document.getElementById("peakB-label").textContent = "一番空く";
+  document.getElementById("peakB-time").textContent = TIME_SLOTS[minIdx];
+  document.getElementById("peakB-min").textContent = mins[minIdx] + " 分";
+
+  document.getElementById("chart-title").textContent = info.name + " の待ち時間・気温・降水量";
+
+  drawChart([{ label: info.name, color: info.color, data: mins }], temps, rains, nowLineIndex);
+  drawList(mins);
+}
+
+
+// ---- 比較モード（読み込めた全アトラクションを重ねる）----
+function renderCompare(weather, day, temps, rains, nowLineIndex) {
+  document.getElementById("peak-row").style.display = "none";
+  document.getElementById("cmp-row").style.display = "flex";
+  document.getElementById("list-card").style.display = "none";
+
+  const series = [];
+  let cmpHtml = "";
+  ATTRACTIONS.forEach(a => {
+    if (!models[a.key]) return;               // 読み込めていないものは飛ばす
+    const mins = predict(models[a.key], weather, day);
+    series.push({ label: a.name, color: a.color, data: mins });
+    cmpHtml += `
+      <div class="cmp-chip">
+        <span class="cmp-dot" style="background:${a.color};"></span>
+        <span class="cmp-name">${a.name}</span>
+        <span class="cmp-val">平均${avg(mins)}分 / 最混${maxOf(mins)}分</span>
+      </div>`;
+  });
+  document.getElementById("cmp-row").innerHTML = cmpHtml;
+  document.getElementById("chart-title").textContent = "アトラクションの待ち時間比較";
+
+  drawChart(series, temps, rains, nowLineIndex);
+}
+
+
+// ==================================================
+// 1アトラクションの各時間帯の待ち時間を計算
+// ==================================================
+function predict(modelObj, weather, day) {
   return TIME_SLOTS.map(slot => {
     const c = modelObj[slot];
-    if (!c) return null;  // その時間帯のデータが無いときは空ける
+    if (!c) return null;
     let v =
         c.intercept
       + c.saturday * day.sat + c.sunday * day.sun + c.holiday * day.hol
@@ -367,91 +510,6 @@ function showMessage(text) {
   msg.textContent = text;
   msg.style.display = "block";
   document.getElementById("result").style.display = "none";
-}
-
-
-// ==================================================
-// 結果を描く（モードで内容を切り替える）
-// ==================================================
-function drawResult(hiduke, weather, day, temps, rains) {
-
-  document.getElementById("message").style.display = "none";
-  document.getElementById("result").style.display = "block";
-
-  // --- 天気サマリー（共通） ---
-  let wEmoji = "☀️", wName = "晴れ";
-  if (weather.rainy) { wEmoji = "🌧️"; wName = "雨"; }
-  else if (weather.cloudy) { wEmoji = "☁️"; wName = "くもり"; }
-  document.getElementById("weather-row").innerHTML = `
-    <div class="weather-chip"><span class="big">${wEmoji}</span>
-      <div><div class="wlabel">天気</div><div class="wval">${wName}</div></div></div>
-    <div class="weather-chip">
-      <div><div class="wlabel">最高 / 最低</div><div class="wval">${weather.saikou}° / ${weather.saitei}°</div></div></div>
-    <div class="weather-chip">
-      <div><div class="wlabel">降水量</div><div class="wval">${weather.ame} mm</div></div></div>
-  `;
-
-  // 現在時刻の赤線位置
-  const nowLineIndex = getNowLineIndex(hiduke);
-
-  if (currentPick === "compare") {
-    // ===== 比較モード =====
-    const beautyMins = predictAttraction(models.beauty, weather, day);
-    const splashMins = predictAttraction(models.splash, weather, day);
-
-    // 上の2ボックスは「各アトラクションの平均待ち時間」にする
-    document.getElementById("peakA-label").textContent = "美女と野獣 平均";
-    document.getElementById("peakA-time").textContent = avg(beautyMins) + "分";
-    document.getElementById("peakA-min").textContent = "最混 " + maxOf(beautyMins) + "分";
-    document.getElementById("peakB-label").textContent = "スプラッシュ 平均";
-    document.getElementById("peakB-time").textContent = avg(splashMins) + "分";
-    document.getElementById("peakB-min").textContent = "最混 " + maxOf(splashMins) + "分";
-
-    document.getElementById("chart-title").textContent = "美女と野獣 と スプラッシュ の待ち時間比較";
-
-    // グラフは2本の待ち時間線＋気温・降水量
-    drawChart(
-      [
-        { label: "美女と野獣",    color: ATTRACTIONS.beauty.color, data: beautyMins },
-        { label: "スプラッシュ", color: ATTRACTIONS.splash.color, data: splashMins }
-      ],
-      temps, rains, nowLineIndex
-    );
-
-    // 比較モードでは時間帯リストは隠す
-    document.getElementById("list-card").style.display = "none";
-
-  } else {
-    // ===== 単体モード（美女と野獣 or スプラッシュ）=====
-    const info = ATTRACTIONS[currentPick];
-    const modelObj = models[currentPick];
-    const mins = predictAttraction(modelObj, weather, day);
-
-    // 一番混む/空く
-    let maxIdx = firstValid(mins), minIdx = firstValid(mins);
-    for (let i = 0; i < mins.length; i++) {
-      if (mins[i] == null) continue;
-      if (mins[i] > mins[maxIdx]) maxIdx = i;
-      if (mins[i] < mins[minIdx]) minIdx = i;
-    }
-    document.getElementById("peakA-label").textContent = "一番混む";
-    document.getElementById("peakA-time").textContent = TIME_SLOTS[maxIdx];
-    document.getElementById("peakA-min").textContent = mins[maxIdx] + " 分";
-    document.getElementById("peakB-label").textContent = "一番空く";
-    document.getElementById("peakB-time").textContent = TIME_SLOTS[minIdx];
-    document.getElementById("peakB-min").textContent = mins[minIdx] + " 分";
-
-    document.getElementById("chart-title").textContent = info.name + " の待ち時間・気温・降水量";
-
-    drawChart(
-      [{ label: info.name, color: info.color, data: mins }],
-      temps, rains, nowLineIndex
-    );
-
-    // 時間帯リスト
-    document.getElementById("list-card").style.display = "block";
-    drawList(mins);
-  }
 }
 
 
@@ -477,29 +535,25 @@ function getNowLineIndex(hiduke) {
     noteEl.style.display = "block";
     return -1;
   }
-  let nearest = 0, minDiff = Infinity;
+  let nearest = 0, md = Infinity;
   for (let i = 0; i < TIME_SLOTS.length; i++) {
     const diff = Math.abs(timeToMinutes(TIME_SLOTS[i]) - nowMinutes);
-    if (diff < minDiff) { minDiff = diff; nearest = i; }
+    if (diff < md) { md = diff; nearest = i; }
   }
   noteEl.textContent = "🔴 赤い線が現在のおおよその時刻です";
   noteEl.style.display = "block";
   return nearest;
 }
-function timeToMinutes(t) {
-  const p = t.split(":");
-  return parseInt(p[0]) * 60 + parseInt(p[1]);
-}
+function timeToMinutes(t) { const p = t.split(":"); return parseInt(p[0]) * 60 + parseInt(p[1]); }
 
 
 // ==================================================
-// グラフ（待ち時間の線を1本〜2本 ＋ 気温 ＋ 降水量）
+// グラフ（待ち時間の線 ＋ 気温 ＋ 降水量）
 // ==================================================
 function drawChart(waitSeries, temps, rains, nowLineIndex) {
   const ctx = document.getElementById("chart");
   if (chartInstance) chartInstance.destroy();
 
-  // 現在時刻の赤い点線
   const nowLinePlugin = {
     id: "nowLine",
     afterDraw(chart) {
@@ -510,22 +564,18 @@ function drawChart(waitSeries, temps, rains, nowLineIndex) {
       c.beginPath();
       c.moveTo(x, chart.chartArea.top);
       c.lineTo(x, chart.chartArea.bottom);
-      c.lineWidth = 2;
-      c.strokeStyle = "#ff5a5a";
-      c.setLineDash([4, 3]);
-      c.stroke();
-      c.restore();
+      c.lineWidth = 2; c.strokeStyle = "#ff5a5a"; c.setLineDash([4, 3]);
+      c.stroke(); c.restore();
     }
   };
 
-  // 待ち時間の線（1本 or 2本）
   const datasets = waitSeries.map(s => ({
     type: "line",
     label: s.label,
     data: s.data,
     borderColor: s.color,
     backgroundColor: hexToFill(s.color),
-    fill: waitSeries.length === 1,   // 1本のときだけ下を塗る
+    fill: waitSeries.length === 1,
     tension: 0.4,
     borderWidth: 3,
     pointBackgroundColor: s.color,
@@ -535,60 +585,36 @@ function drawChart(waitSeries, temps, rains, nowLineIndex) {
     order: 1
   }));
 
-  // 気温（破線）
   datasets.push({
-    type: "line",
-    label: "気温(℃)",
-    data: temps,
-    borderColor: "#ff9f6b",
-    backgroundColor: "transparent",
-    borderDash: [5, 3],
-    tension: 0.4,
-    borderWidth: 2,
-    pointRadius: 0,
-    spanGaps: true,
-    yAxisID: "yTemp",
-    order: 2
+    type: "line", label: "気温(℃)", data: temps,
+    borderColor: "#ff9f6b", backgroundColor: "transparent",
+    borderDash: [5, 3], tension: 0.4, borderWidth: 2, pointRadius: 0,
+    spanGaps: true, yAxisID: "yTemp", order: 2
   });
-
-  // 降水量（棒）
   datasets.push({
-    type: "bar",
-    label: "降水量(mm)",
-    data: rains,
-    backgroundColor: "rgba(120,140,200,0.35)",
-    borderRadius: 3,
-    yAxisID: "yRain",
-    order: 3
+    type: "bar", label: "降水量(mm)", data: rains,
+    backgroundColor: "rgba(120,140,200,0.35)", borderRadius: 3,
+    yAxisID: "yRain", order: 3
   });
 
   chartInstance = new Chart(ctx, {
     data: { labels: TIME_SLOTS, datasets: datasets },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 500 },
       interaction: { mode: "index", intersect: false },
-      plugins: {
-        legend: { display: true, labels: { color: "#c3c8f0", font: { size: 11 }, boxWidth: 14, padding: 10 } }
-      },
+      plugins: { legend: { display: true, labels: { color: "#c3c8f0", font: { size: 11 }, boxWidth: 14, padding: 10 } } },
       scales: {
-        yWait: {
-          position: "left", beginAtZero: true,
+        yWait: { position: "left", beginAtZero: true,
           grid: { color: "rgba(255,255,255,0.06)" },
           ticks: { color: "#c3c8f0", font: { size: 10 } },
-          title: { display: true, text: "待ち時間(分)", color: "#c3c8f0", font: { size: 10 } }
-        },
-        yTemp: {
-          position: "right",
-          grid: { display: false },
+          title: { display: true, text: "待ち時間(分)", color: "#c3c8f0", font: { size: 10 } } },
+        yTemp: { position: "right", grid: { display: false },
           ticks: { color: "#ff9f6b", font: { size: 10 } },
-          title: { display: true, text: "気温(℃)", color: "#ff9f6b", font: { size: 10 } }
-        },
+          title: { display: true, text: "気温(℃)", color: "#ff9f6b", font: { size: 10 } } },
         yRain: { position: "right", beginAtZero: true, display: false, max: 20 },
-        x: {
-          grid: { display: false },
-          ticks: { color: "#8b92c4", font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 7 }
-        }
+        x: { grid: { display: false },
+          ticks: { color: "#8b92c4", font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 7 } }
       }
     },
     plugins: [nowLinePlugin]
@@ -596,9 +622,6 @@ function drawChart(waitSeries, temps, rains, nowLineIndex) {
 }
 
 
-// ==================================================
-// 時間帯リスト（単体モードだけ）
-// ==================================================
 function drawList(mins) {
   const listCard = document.getElementById("list-card");
   const maxMin = maxOf(mins);
@@ -624,14 +647,10 @@ function minColor(m) {
   if (m < 120) return "#ff9f45";
   return "#ff6b6b";
 }
-
-// 線の色を薄い塗り色に変える
 function hexToFill(hex) {
   const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
   return `rgba(${r},${g},${b},0.12)`;
 }
-
-// 小さな計算ヘルパー（nullは無視する）
 function avg(arr) { const v = arr.filter(x => x != null); return v.length ? Math.round(v.reduce((a,b)=>a+b,0)/v.length) : 0; }
 function maxOf(arr) { const v = arr.filter(x => x != null); return v.length ? Math.max(...v) : 0; }
 function firstValid(arr) { for (let i=0;i<arr.length;i++) if (arr[i]!=null) return i; return 0; }
