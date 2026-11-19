@@ -443,7 +443,7 @@ function renderSingle(key, weather, day, temps, rains, nowLineIndex) {
   } else {
     aimRow.innerHTML = `
       <div class="aim-head"><span class="aim-emoji">🎯</span> 狙い目の時間（タップでグラフに表示）</div>
-      <div class="aim-note">※18〜19時台は閉演直後なので空きます。それを除た日中で空いてそうな時間のTOP${top.length}です。</div>
+      <div class="aim-note">※18〜19時台は閉演直後なので空きます。それを除いた日中で空いてそうな時間のTOP${top.length}です。</div>
       <div class="aim-tabs" id="aim-tabs"></div>`;
     const tabsWrap = aimRow.querySelector("#aim-tabs");
     const rankLabel = ["1位", "2位", "3位"];
