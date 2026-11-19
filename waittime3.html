@@ -77,6 +77,14 @@
     .weather-chip .wval { font-weight: 700; }
 
     .peak-row { display: flex; gap: 10px; margin-bottom: 18px; }
+    /* 🎯狙い目バナー（1アトラクション表示のときだけ出る・9時台は除外した日中のおすすめ） */
+    .aim-row { display: none; align-items: center; gap: 12px; margin-bottom: 18px;
+      background: rgba(255,210,74,0.12); border: 1px solid rgba(255,210,74,0.38);
+      border-radius: 14px; padding: 12px 15px; }
+    .aim-row .aim-emoji { font-size: 22px; flex-shrink: 0; }
+    .aim-row .aim-main { font-size: 15px; font-weight: 800; color: var(--text); }
+    .aim-row .aim-main b { color: var(--gold); }
+    .aim-row .aim-sub { font-size: 12px; color: var(--sub); font-weight: 600; margin-top: 2px; }
     .peak-box { flex: 1; border-radius: 14px; padding: 14px; text-align: center;
       background: rgba(255,255,255,0.04); border: 1px solid var(--card-line); }
     .peak-label { font-size: 11px; color: var(--sub); margin-bottom: 4px; }
@@ -155,6 +163,9 @@
           <div class="peak-min" id="peakB-min">-- 分</div>
         </div>
       </div>
+
+      <!-- 🎯狙い目バナー（JavaScriptで中身を入れる・単体表示のときだけ表示） -->
+      <div class="aim-row" id="aim-row"></div>
 
       <div class="cmp-row" id="cmp-row"></div>
 
@@ -392,6 +403,26 @@ function renderSingle(key, weather, day, temps, rains, nowLineIndex) {
   document.getElementById("peakB-time").textContent = TIME_SLOTS[minIdx];
   document.getElementById("peakB-min").textContent = mins[minIdx] + " 分";
 
+  // 🎯狙い目：9時台（開園直後＝ロープドロップの数字で代表性がない）を除いた、日中で一番空く時間
+  const aimRow = document.getElementById("aim-row");
+  let aimIdx = -1;
+  for (let i = 0; i < mins.length; i++) {
+    if (mins[i] == null) continue;
+    if (timeToMinutes(TIME_SLOTS[i]) < 10 * 60) continue;   // 10:00より前（9時台）は除外
+    if (aimIdx === -1 || mins[i] < mins[aimIdx]) aimIdx = i;
+  }
+  if (aimIdx !== -1) {
+    aimRow.innerHTML = `
+      <span class="aim-emoji">🎯</span>
+      <div>
+        <div class="aim-main">狙い目は <b>${TIME_SLOTS[aimIdx]} ごろ</b>（予測 ${mins[aimIdx]} 分）</div>
+        <div class="aim-sub">開園直後の時間帯を除いた、日中で一番空きそうな時間です</div>
+      </div>`;
+    aimRow.style.display = "flex";
+  } else {
+    aimRow.style.display = "none";
+  }
+
   // 受付終了見込みの逆算（最後の予測待ち時間を使う）
   const lastWait = mins[lastValid(mins)];
   bandCutoff = clampCutoff(CLOSE_MINUTES - lastWait);
@@ -408,6 +439,7 @@ function renderSingle(key, weather, day, temps, rains, nowLineIndex) {
 // ---- 比較モード（選ばれたアトラクションだけ重ねる）----
 function renderCompare(weather, day, temps, rains, nowLineIndex) {
   document.getElementById("peak-row").style.display = "none";
+  document.getElementById("aim-row").style.display = "none";
   document.getElementById("cmp-row").style.display = "flex";
   document.getElementById("list-card").style.display = "none";
   bandCutoff = null; // 比較は各アトラクションで締め切りが違うので塗らない
